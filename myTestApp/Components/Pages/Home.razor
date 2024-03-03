@@ -1,0 +1,111 @@
+﻿@page "/"
+@attribute [StreamRendering]
+@rendermode InteractiveServer
+@inject IExpenseService ExpenseService
+
+<PageTitle>Finance App</PageTitle>
+
+<h1>Finances</h1>
+
+@if (expenses == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Description</th>
+                <th>Value</th>
+                <th>Category</th>
+                <th>Payment Form</th>
+                <th></th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var expense in expenses)
+            {
+                <tr>
+                    <td>@expense.CreatedAt.ToShortDateString()</td>
+                    <td>@expense.Description</td>
+                    <td>@expense.Value</td>
+                    <td>@expense.Category</td>
+                    <td>@expense.PaymentForm</td>
+                    <td class="pointer-event" @onclick="() => FillExpenseData(expense)">Edit</td>
+                    <td class="pointer-event" @onclick="() => DeleteExpense(expense)">Delete</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<h2>Add New Expense</h2>
+
+<form @onsubmit="SubmitExpense" >
+    <input type="hidden" id="id" @bind="NewExpense.Id" />
+
+    <label for="description">Description:</label>
+    <input type="text" id="description" @bind="NewExpense.Description" required />
+
+    <label for="value">Value:</label>
+    <input type="number" id="value" @bind="NewExpense.Value" step="0.01" required />
+
+    <label for="category">Category:</label>
+    <input type="text" id="category" @bind="NewExpense.Category" required />
+
+    <label for="paymentForm">Payment Form:</label>
+    <input type="text" id="paymentForm" @bind="NewExpense.PaymentForm" required />
+
+    <button type="submit">@(NewExpense.Id == null ? "Add Expense" : "Update Expense")</button>
+</form>
+
+@code {
+    private Expense[]? expenses;
+    private Expense NewExpense { get; set; } = new Expense();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadExpenses();
+    }
+
+    private async Task LoadExpenses()
+    {
+        var result = await ExpenseService.GetExpensesAsync();
+        expenses = result.Select(x => new Expense
+            {
+                Id = x.Id,
+                Description = x.Description,
+                Category = x.Category,
+                Value = x.Value,
+                CreatedAt = x.CreatedAt,
+                PaymentForm = x.PaymentForm
+            }).ToArray();
+    }
+
+    private async Task SubmitExpense()
+    {
+        if (NewExpense.Id == null)
+            await ExpenseService.AddAsync(NewExpense);
+        else
+            await ExpenseService.UpdateAsync(NewExpense);
+
+        await LoadExpenses();
+        NewExpense = new Expense();
+    }
+
+    private async Task DeleteExpense(Expense expense)
+    {
+        await ExpenseService.DeleteAsync(expense);
+        await LoadExpenses();
+    }
+
+    private void FillExpenseData(Expense expense)
+    {
+
+        NewExpense = expense;
+    }
+}
+
